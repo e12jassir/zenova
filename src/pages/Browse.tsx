@@ -94,7 +94,7 @@ export function Browse({ type }: { type: MediaType }) {
   return (
     <div className="pb-28">
       {/* Editorial filter bar */}
-      <div className={cx("relative z-10 mt-[76px] md:sticky md:top-[68px] md:z-20 md:mt-[76px]")}>
+      <div className={cx("relative z-10 mt-[76px] md:sticky md:top-0 md:z-30 md:mt-0")}>
         <div
           className={cx(
             "glass absolute inset-0 hidden transition-opacity duration-500 refract md:block",
@@ -197,7 +197,7 @@ export function Browse({ type }: { type: MediaType }) {
             exit={{ opacity: 0 }}
             transition={{ duration: 0.35 }}
           >
-            <div className="md:-mt-[152px]">
+            <div className="md:-mt-[78px]">
               <Hero
                 items={heroItems}
                 loading={heroSource.loading}

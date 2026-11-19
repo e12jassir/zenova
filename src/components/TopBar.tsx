@@ -82,6 +82,7 @@ export function TopBar() {
   }
 
   const showDropdown = open && value.trim().length >= 2;
+  const isBrowse = route.name === "movies" || route.name === "series";
 
   const submit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -92,7 +93,12 @@ export function TopBar() {
   };
 
   return (
-    <div className="pointer-events-none fixed inset-x-0 top-0 z-40 flex justify-center pr-[72px] pl-4 pt-4 md:z-30 md:pr-4 md:pl-[84px]">
+    <div
+      className={cx(
+        "pointer-events-none fixed inset-x-0 top-0 z-40 flex justify-center pr-[72px] pl-4 pt-4 md:pr-4 md:pl-[84px]",
+        isBrowse ? "md:top-[72px] md:z-20 md:pt-3" : "md:z-30",
+      )}
+    >
       <div
         ref={containerRef}
         className={cx(
