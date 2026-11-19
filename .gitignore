@@ -2,18 +2,21 @@ node_modules/
 dist/
 dist-packages/
 .atl/
+.design-engine/
 .DS_Store
 *.log
+*.zip
+odd/
 repomix-*
 PLAN*.md
 PROPUESTAS_*.md
 .vercel/
 
-
-
 # TV Application packages
 public/*.apk
 public/*.wgt
+android/app/src/main/assets/public/*.apk
+android/app/src/main/assets/public/*.wgt
 platforms/
 *.wgt
 *.ipk
@@ -24,3 +27,4 @@ packaging/tizen/certs/*.crt
 *.p12
 *.keystore
 *.jks
+.env*

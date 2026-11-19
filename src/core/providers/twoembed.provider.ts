@@ -11,10 +11,10 @@ import {
 
 export class TwoEmbedProvider implements IVideoProviderStrategy {
   readonly id = 'twoembed';
-  readonly name = 'Opción 5: Alternativa (Multi · Sub)';
-  readonly shortName = 'Opción 5';
+  readonly name = 'Opción 4: Alternativa (Multi · Sub)';
+  readonly shortName = 'Opción 4';
   readonly audioHint = 'Multi · Sub';
-  readonly priority = 5;
+  readonly priority = 4;
 
   canHandle(request: PlaybackRequest): boolean {
     return isValidPlaybackRequest(request);

@@ -16,6 +16,7 @@ import { hover } from "./lib/hover";
 import { initCloudSync } from "./lib/cloud";
 import { navigate, useRoute, type Route } from "./lib/router";
 import { useActiveProfile, useSettings } from "./lib/store";
+import { useTvNavigation } from "./lib/tv-nav";
 import { uiStore } from "./lib/ui";
 import { PLATFORMS } from "./lib/platforms";
 import { THEMES, usePalette } from "./lib/themes";
@@ -42,7 +43,7 @@ function renderPage(route: Route) {
     case "search":
       return <Search initial={route.q} />;
     case "list":
-      return <MyList />;
+      return <MyList initialTab={route.tab} />;
     case "categories":
       return <Categories />;
     case "genre":
@@ -57,6 +58,7 @@ function renderPage(route: Route) {
 }
 
 export default function App() {
+  useTvNavigation();
   const profile = useActiveProfile();
   const settings = useSettings();
   const route = useRoute();
@@ -166,7 +168,7 @@ export default function App() {
                 </nav>
               </div>
               <div className="mt-6 flex flex-wrap items-center justify-between gap-2 border-t border-line/60 pt-5 text-[11px] text-dim/80">
-                <span>PelisStream · Streaming de alta fidelidad</span>
+                <span>Zenova · Streaming de alta fidelidad</span>
                 <span>Web · Android · Smart TV</span>
               </div>
             </footer>

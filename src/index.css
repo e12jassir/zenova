@@ -84,6 +84,11 @@
   button {
     cursor: pointer;
   }
+  select option,
+  select optgroup {
+    background-color: var(--color-raised);
+    color: var(--color-fg);
+  }
   :focus-visible {
     outline: 2px solid var(--color-accent);
     outline-offset: 3px;
@@ -215,11 +220,20 @@
     pointer-events: none;
     z-index: -1;
   }
-  &:hover {
+  &:hover,
+  &:focus-visible,
+  &:has(:focus-visible) {
     transform: translate3d(0, -6px, 0) scale(1.035);
   }
-  &:hover::after {
+  &:hover::after,
+  &:focus-visible::after,
+  &:has(:focus-visible)::after {
     opacity: 1;
+  }
+  &:focus-visible,
+  &:has(:focus-visible) {
+    outline: 3px solid var(--color-accent);
+    outline-offset: 3px;
   }
 }
 

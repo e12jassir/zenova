@@ -187,7 +187,7 @@ export function Top10Card({
           fontSize="250"
           letterSpacing={wide ? -26 : 0}
           fill={`url(#${uid}f)`}
-          className="opacity-0 transition-opacity duration-500 ease-[var(--ease-spring)] group-hover/top:opacity-100"
+          className="opacity-0 transition-opacity duration-500 ease-[var(--ease-spring)] group-hover/top:opacity-100 group-focus-within/top:opacity-100"
         >
           {rank}
         </text>
@@ -241,7 +241,7 @@ export function ContinueCard({
             className="absolute inset-0 size-full object-cover"
           />
           <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-black/25 to-transparent" />
-          <span className="absolute top-1/2 left-1/2 flex size-14 -translate-x-1/2 -translate-y-1/2 items-center justify-center rounded-full bg-white/15 opacity-0 backdrop-blur-md transition-[opacity,transform] duration-500 ease-[var(--ease-spring)] group-hover/cont:opacity-100 refract">
+          <span className="absolute top-1/2 left-1/2 flex size-14 -translate-x-1/2 -translate-y-1/2 items-center justify-center rounded-full bg-white/15 opacity-0 backdrop-blur-md transition-[opacity,transform] duration-500 ease-[var(--ease-spring)] group-hover/cont:opacity-100 group-focus-within/cont:opacity-100 refract">
             <Play className="ml-0.5 size-6 fill-fg" />
           </span>
           <div className="absolute inset-x-3.5 bottom-3 text-left">
@@ -255,7 +255,7 @@ export function ContinueCard({
         onClick={onRemove}
         aria-label="Quitar de Continuar viendo"
         title="Quitar de Continuar viendo"
-        className="absolute top-2.5 right-2.5 flex size-8 items-center justify-center rounded-full bg-black/60 text-fg opacity-0 backdrop-blur-md transition-opacity duration-300 group-hover/cont:opacity-100 hover:bg-black/80 max-md:opacity-100"
+        className="absolute top-2.5 right-2.5 flex size-8 items-center justify-center rounded-full bg-black/60 text-fg opacity-0 backdrop-blur-md transition-opacity duration-300 group-hover/cont:opacity-100 group-focus-within/cont:opacity-100 hover:bg-black/80 max-md:opacity-100"
       >
         <X className="size-4" />
       </button>

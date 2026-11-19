@@ -70,6 +70,12 @@ export interface Profile {
 
 export type PlayerMode = "stream" | "trailer";
 
+export interface JellyfinConfig {
+  url: string;
+  apiKey: string;
+  userId?: string;
+}
+
 export interface ProfileSettings {
   autoplayPreviews: boolean;
   previewSound: boolean;
@@ -80,6 +86,7 @@ export interface ProfileSettings {
   playbackRate: number;
   preferredProvider: string;
   theme: import("./themes").ThemeId;
+  jellyfin?: JellyfinConfig;
 }
 
 export interface ProfileData {

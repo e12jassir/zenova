@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 
 /**
- * PelisStream v2 - Unified Smart TV Packager (webOS + Tizen)
+ * Zenova v3 - Unified Smart TV Packager (webOS + Tizen)
  * 
  * Runs automated packaging for both LG webOS (.ipk) and Samsung Tizen (.wgt)
  * and produces release packages ready for TV deployment.
@@ -17,7 +17,7 @@ const __dirname = path.dirname(__filename);
 const webosScript = path.join(__dirname, 'package-webos.js');
 const tizenScript = path.join(__dirname, 'package-tizen.js');
 
-console.log('🚀 PelisStream v2 - Smart TV Unified Packaging Suite');
+console.log('🚀 Zenova v3 - Smart TV Unified Packaging Suite');
 console.log('Target Platforms: LG webOS (.ipk) & Samsung Tizen (.wgt)');
 console.log('══════════════════════════════════════════════════════════════\n');
 

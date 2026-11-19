@@ -11,7 +11,6 @@ import type { MediaItem } from "../lib/types";
 import { HUBS, HubTile, MediaGrid, Segmented } from "../components/PageParts";
 import { GUTTER } from "../components/Rail";
 import { SmartImage } from "../components/SmartImage";
-import { searchAnime } from "../core/extractors/anime.extractor";
 
 type Filter = "all" | "movie" | "series" | "anime";
 
@@ -51,39 +50,6 @@ export function Search({ initial }: { initial?: string }) {
         if (cinemetaItems.length) actions.addRecentSearch(debounced);
       });
 
-    Promise.race([
-      searchAnime(debounced).catch(() => []),
-      new Promise<[]>((resolve) => window.setTimeout(() => resolve([]), 2500)),
-    ]).then((animeResults) => {
-      if (!alive || !animeResults.length) return;
-
-      const animeItems: MediaItem[] = animeResults.map((a) => ({
-        id: `anime-${a.id}`,
-        type: "series",
-        title: a.title,
-        poster: a.poster || "",
-        background: a.poster || "",
-        logo: "",
-        year: "Anime",
-        releaseInfo: "Anime",
-        imdbRating: 8.8,
-        genres: ["Anime", "Animación", "Japón"],
-        synopsis: a.title,
-        cast: [],
-        director: [],
-        writer: [],
-        trailers: [],
-      }));
-
-      setResults((prev) => {
-        if (prev.q !== debounced) return { q: debounced, items: animeItems };
-        const existing = new Set(prev.items.map((x) => x.id));
-        const extra = animeItems.filter((x) => !existing.has(x.id));
-        return extra.length ? { q: debounced, items: [...prev.items, ...extra] } : prev;
-      });
-      setLoading(false);
-    });
-
     return () => {
       alive = false;
     };
@@ -94,10 +60,14 @@ export function Search({ initial }: { initial?: string }) {
       kidsFilter(results.items).filter((i) => {
         if (filter === "all") return true;
         if (filter === "anime") {
-          return i.id.startsWith("anime-") || i.genres?.some((g) => g.toLowerCase().includes("anime"));
+          return Boolean(
+            i.genres?.some(
+              (g) => g.toLowerCase() === "animation" || g.toLowerCase().includes("anime"),
+            ),
+          );
         }
-        if (filter === "movie") return i.type === "movie" && !i.id.startsWith("anime-");
-        if (filter === "series") return i.type === "series" && !i.id.startsWith("anime-");
+        if (filter === "movie") return i.type === "movie";
+        if (filter === "series") return i.type === "series";
         return true;
       }),
     [results.items, filter, kidsFilter],

@@ -11,12 +11,12 @@ import {
 export default async function handler(req: VercelRequest, res: VercelResponse) {
   if (applyCors(req, res)) return;
 
-  const username = verifyToken(req.headers.authorization);
-  if (!username) {
-    return res.status(401).json({ error: "Sesión expirada o no autorizada." });
-  }
-
   try {
+    const username = verifyToken(req.headers.authorization);
+    if (!username) {
+      return res.status(401).json({ error: "Sesión expirada o no autorizada." });
+    }
+
     const sql = getSql();
     await ensureSchema(sql);
 
@@ -60,6 +60,9 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   } catch (err) {
     if (err instanceof Error && err.message === "DATABASE_URL_MISSING") {
       return res.status(503).json({ error: "Base de datos no configurada en el servidor." });
+    }
+    if (err instanceof Error && err.message === "AUTH_SECRET_MISSING") {
+      return res.status(503).json({ error: "Secreto de autenticación no configurado en el servidor." });
     }
     console.error("[sync]", err);
     return res.status(500).json({ error: "Error de sincronización." });

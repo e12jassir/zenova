@@ -16,6 +16,8 @@ export interface PlaybackResolution {
   readonly sandboxFlags: string;
   /** Passed verbatim to the iframe `allow` attribute. */
   readonly allowAttributes: string;
+  /** True when the upstream embed rejects `<iframe sandbox>` and requires compat mode. */
+  readonly requiresCompatMode?: boolean;
 }
 
 export interface IVideoProviderStrategy {
@@ -25,6 +27,8 @@ export interface IVideoProviderStrategy {
   readonly audioHint: string;
   /** Lower values are preferred when falling back. */
   readonly priority: number;
+  /** True when the upstream embed rejects `<iframe sandbox>` and requires compat mode. */
+  readonly requiresCompatMode?: boolean;
   canHandle(request: PlaybackRequest): boolean;
   resolve(request: PlaybackRequest): PlaybackResolution;
 }

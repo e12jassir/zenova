@@ -25,7 +25,7 @@ export function Top10Module({
       : { kind: "platform", platform: tab, type };
   const { items, loading } = useSource(source);
   const top = items.slice(0, 10);
-  const where = tab === "global" ? "PelisStream" : PLATFORMS[tab].name;
+  const where = tab === "global" ? "Zenova" : PLATFORMS[tab].name;
   const tabs: Tab[] = fixedPlatform ? [] : ["global", ...PLATFORM_ORDER];
 
   return (

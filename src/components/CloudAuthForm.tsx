@@ -119,7 +119,7 @@ export function CloudAuthForm({
       </button>
 
       <p className="pt-2 text-center text-sm text-muted">
-        {mode === "login" ? "¿Primera vez en PelisStream?" : "¿Ya tienes cuenta?"}{" "}
+        {mode === "login" ? "¿Primera vez en Zenova?" : "¿Ya tienes cuenta?"}{" "}
         <button
           type="button"
           disabled={isBusy}

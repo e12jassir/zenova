@@ -1,11 +1,14 @@
 import { motion } from "motion/react";
-import { Check, Cloud, Keyboard, LogOut, RefreshCw, Trash2 } from "lucide-react";
-import { useState } from "react";
+import { Check, Cloud, Eye, EyeOff, Keyboard, Loader2, LogOut, RefreshCw, Server, Trash2 } from "lucide-react";
+import { useEffect, useState } from "react";
 import { cloudActions, useCloud } from "../lib/cloud";
+import { defaultProviderManager } from "../core/providers/provider.manager";
 import { cx } from "../lib/format";
+import { normalizeJellyfinUrl, testJellyfinConnection } from "../lib/jellyfin";
+import { clearNativeStreamCache } from "../lib/native-stream";
 import { actions, useActiveProfile, useProfiles, useSettings } from "../lib/store";
 import { ui } from "../lib/ui";
-import type { ProfileSettings } from "../lib/types";
+import type { JellyfinConfig, ProfileSettings } from "../lib/types";
 import { Avatar } from "../components/Avatar";
 import { Bezel } from "../components/Bezel";
 import { THEMES, type ThemeId } from "../lib/themes";
@@ -228,14 +231,10 @@ export function Settings() {
             <Options
               value={s.preferredProvider}
               onChange={(v) => set({ preferredProvider: v })}
-              options={[
-                { id: "vidsrc_pm", label: "Opción 1 (Ultra Rápida)" },
-                { id: "vidsrc_me", label: "Opción 2 (Directo HD)" },
-                { id: "multiembed", label: "Opción 3 (Multi-Servidor)" },
-                { id: "playlatin", label: "Opción 4 (Latino / ES)" },
-                { id: "twoembed", label: "Opción 5 (Alternativa)" },
-                { id: "vidsrc_to", label: "Opción 6 (Espejo)" },
-              ]}
+              options={defaultProviderManager.getAll().map((p) => ({
+                id: p.id,
+                label: `${p.shortName} (${p.audioHint})`,
+              }))}
             />
           </Row>
           <Row label="Velocidad predeterminada">
@@ -272,6 +271,13 @@ export function Settings() {
             onChange={(v) => set({ reduceMotion: v })}
           />
         </Card>
+
+        <JellyfinCard
+          key={profile.id}
+          config={s.jellyfin}
+          onSave={(jellyfin) => set({ jellyfin })}
+          onDisconnect={() => set({ jellyfin: undefined })}
+        />
 
         <Card title="Privacidad y datos">
           <DangerRow
@@ -371,7 +377,7 @@ function Options<T extends string | number>({
   options: Array<{ id: T; label: string }>;
 }) {
   return (
-    <div className="flex gap-1 rounded-full bg-white/[0.06] p-1">
+    <div className="flex flex-wrap justify-end gap-1 rounded-2xl bg-white/[0.06] p-1.5">
       {options.map((o) => (
         <button
           key={String(o.id)}
@@ -385,6 +391,220 @@ function Options<T extends string | number>({
         </button>
       ))}
     </div>
+  );
+}
+
+function JellyfinCard({
+  config,
+  onSave,
+  onDisconnect,
+}: {
+  config?: JellyfinConfig;
+  onSave: (jellyfin: JellyfinConfig) => void;
+  onDisconnect: () => void;
+}) {
+  const [url, setUrl] = useState(config?.url ?? "");
+  const [apiKey, setApiKey] = useState(config?.apiKey ?? "");
+  const [showKey, setShowKey] = useState(false);
+  const [testing, setTesting] = useState(false);
+  const [saving, setSaving] = useState(false);
+  const [status, setStatus] = useState<{ ok: boolean; message: string } | null>(null);
+  const [tested, setTested] = useState<{ url: string; apiKey: string; userId?: string } | null>(
+    null,
+  );
+
+  useEffect(() => {
+    setUrl(config?.url ?? "");
+    setApiKey(config?.apiKey ?? "");
+    setStatus(null);
+    setTested(null);
+  }, [config?.url, config?.apiKey, config?.userId]);
+
+  const busy = testing || saving;
+
+  const handleTest = async () => {
+    const normalizedUrl = normalizeJellyfinUrl(url);
+    const cleanKey = apiKey.trim();
+    if (!normalizedUrl || !cleanKey) {
+      setStatus({ ok: false, message: "Ingresa la URL del servidor y la API key." });
+      return;
+    }
+    setTesting(true);
+    setStatus(null);
+    try {
+      const res = await testJellyfinConnection(normalizedUrl, cleanKey);
+      if (res.ok) {
+        setTested({ url: normalizedUrl, apiKey: cleanKey, userId: res.userId });
+        setStatus({ ok: true, message: `Conectado a ${res.serverName ?? "Jellyfin"}` });
+      } else {
+        setTested(null);
+        setStatus({ ok: false, message: res.error ?? "No se pudo conectar con el servidor." });
+      }
+    } catch (err) {
+      setTested(null);
+      setStatus({
+        ok: false,
+        message: err instanceof Error ? err.message : "Error al probar la conexión.",
+      });
+    } finally {
+      setTesting(false);
+    }
+  };
+
+  const handleSave = async () => {
+    const normalizedUrl = normalizeJellyfinUrl(url);
+    const cleanKey = apiKey.trim();
+    if (!normalizedUrl || !cleanKey) {
+      setStatus({ ok: false, message: "Ingresa la URL del servidor y la API key." });
+      return;
+    }
+    setSaving(true);
+    setStatus(null);
+    try {
+      let userId =
+        tested && tested.url === normalizedUrl && tested.apiKey === cleanKey
+          ? tested.userId
+          : config?.url === normalizedUrl && config?.apiKey === cleanKey
+            ? config.userId
+            : undefined;
+
+      if (!userId) {
+        const res = await testJellyfinConnection(normalizedUrl, cleanKey);
+        if (res.ok) {
+          userId = res.userId;
+          setTested({ url: normalizedUrl, apiKey: cleanKey, userId: res.userId });
+          setStatus({ ok: true, message: `Conectado a ${res.serverName ?? "Jellyfin"}` });
+        } else {
+          setStatus({
+            ok: false,
+            message: res.error ?? "No se pudo verificar la conexión; guardado de todas formas.",
+          });
+        }
+      }
+
+      setUrl(normalizedUrl);
+      setApiKey(cleanKey);
+      onSave({ url: normalizedUrl, apiKey: cleanKey, userId });
+      clearNativeStreamCache();
+      ui.toast("Servidor Jellyfin guardado", "success");
+    } catch (err) {
+      setStatus({
+        ok: false,
+        message: err instanceof Error ? err.message : "Error al guardar la configuración.",
+      });
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const handleDisconnect = () => {
+    onDisconnect();
+    setUrl("");
+    setApiKey("");
+    setTested(null);
+    setStatus(null);
+    clearNativeStreamCache();
+    ui.toast("Servidor Jellyfin desconectado");
+  };
+
+  return (
+    <Card title="Servidor Personal (Jellyfin · 0 anuncios)" icon={<Server className="size-4" />}>
+      <div className="space-y-4 px-5 py-5">
+        <p className="text-sm text-muted">
+          Conecta tu servidor Jellyfin para reproducir películas y series de tu biblioteca en calidad
+          original y sin anuncios.
+        </p>
+
+        <label className="block">
+          <span className="mb-1.5 block text-xs font-bold tracking-wider text-dim uppercase">
+            URL del servidor
+          </span>
+          <input
+            type="text"
+            inputMode="url"
+            autoComplete="off"
+            value={url}
+            onChange={(e) => {
+              setUrl(e.target.value);
+              setStatus(null);
+            }}
+            placeholder="https://jellyfin.tudominio.com"
+            className="w-full rounded-xl bg-white/[0.06] refract px-4 py-2.5 text-sm font-medium text-fg placeholder:text-dim outline-none transition focus:border-accent"
+          />
+        </label>
+
+        <label className="block">
+          <span className="mb-1.5 block text-xs font-bold tracking-wider text-dim uppercase">
+            API Key
+          </span>
+          <div className="relative">
+            <input
+              type={showKey ? "text" : "password"}
+              autoComplete="off"
+              value={apiKey}
+              onChange={(e) => {
+                setApiKey(e.target.value);
+                setStatus(null);
+              }}
+              placeholder="Clave de API generada en Jellyfin"
+              className="w-full rounded-xl bg-white/[0.06] refract px-4 py-2.5 pr-11 text-sm font-medium text-fg placeholder:text-dim outline-none transition focus:border-accent"
+            />
+            <button
+              type="button"
+              onClick={() => setShowKey((v) => !v)}
+              aria-label={showKey ? "Ocultar API Key" : "Ver API Key"}
+              className="absolute top-1/2 right-2.5 -translate-y-1/2 rounded-lg p-1.5 text-muted transition hover:text-fg"
+            >
+              {showKey ? <EyeOff className="size-4" /> : <Eye className="size-4" />}
+            </button>
+          </div>
+        </label>
+
+        {status && (
+          <div
+            className={cx(
+              "rounded-xl border px-3.5 py-2.5 text-sm font-medium",
+              status.ok
+                ? "border-match/35 bg-match/15 text-match"
+                : "border-danger/35 bg-danger/15 text-danger",
+            )}
+          >
+            {status.message}
+          </div>
+        )}
+
+        <div className="flex flex-wrap items-center gap-2 pt-1">
+          <button
+            type="button"
+            disabled={busy}
+            onClick={() => void handleTest()}
+            className="inline-flex items-center gap-2 rounded-full bg-white/10 px-4 py-2 text-sm font-bold transition hover:bg-white/20 disabled:opacity-50"
+          >
+            {testing && <Loader2 className="size-3.5 animate-spin" />}
+            Probar conexión
+          </button>
+          <button
+            type="button"
+            disabled={busy}
+            onClick={() => void handleSave()}
+            className="inline-flex items-center gap-2 rounded-full bg-fg px-5 py-2 text-sm font-bold text-ink transition hover:bg-white disabled:opacity-50"
+          >
+            {saving && <Loader2 className="size-3.5 animate-spin" />}
+            Guardar
+          </button>
+          {config && (
+            <button
+              type="button"
+              disabled={busy}
+              onClick={handleDisconnect}
+              className="ml-auto rounded-full bg-danger/15 px-4 py-2 text-sm font-bold text-danger transition hover:bg-danger/25 disabled:opacity-50"
+            >
+              Desconectar
+            </button>
+          )}
+        </div>
+      </div>
+    </Card>
   );
 }
 

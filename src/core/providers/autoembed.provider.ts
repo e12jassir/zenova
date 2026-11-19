@@ -9,13 +9,14 @@ import {
   type PlaybackResolution,
 } from './provider.interface';
 
-/** AutoEmbed: Multi-audio (Latino / Castellano / English) with permissive `frame-ancestors *`. */
+/** AutoEmbed: Multi-audio (Latino / Castellano / English). Rejects sandboxed iframes upstream. */
 export class AutoEmbedProvider implements IVideoProviderStrategy {
   readonly id = 'autoembed';
-  readonly name = 'AutoEmbed (Multi / Latino)';
-  readonly shortName = 'AutoEmbed';
+  readonly name = 'Opción 5: AutoEmbed (Multi · Compat)';
+  readonly shortName = 'Opción 5';
   readonly audioHint = 'Multi · Latino';
-  readonly priority = 2;
+  readonly priority = 5;
+  readonly requiresCompatMode = true;
 
   canHandle(request: PlaybackRequest): boolean {
     return isValidPlaybackRequest(request);
@@ -35,6 +36,7 @@ export class AutoEmbedProvider implements IVideoProviderStrategy {
       embedUrl,
       sandboxFlags: SHARED_SANDBOX_FLAGS,
       allowAttributes: SHARED_ALLOW_ATTRIBUTES,
+      requiresCompatMode: true,
     };
   }
 }

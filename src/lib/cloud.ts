@@ -1,9 +1,9 @@
+import { apiUrl } from "./api";
 import { createStore, useStore } from "./createStore";
 import { actions, getCloudSnapshot, onDataChange, type CloudState } from "./store";
 
 const ACCOUNT_KEY = "pelisstream:account";
 const GUEST_KEY = "pelisstream:guest";
-const API_BASE = ((import.meta.env.VITE_API_URL as string | undefined) ?? "").replace(/\/+$/, "");
 
 interface StoredAccount {
   token: string;
@@ -90,7 +90,7 @@ async function apiJson<T>(
   const headers: Record<string, string> = { "Content-Type": "application/json" };
   if (options.token) headers.Authorization = `Bearer ${options.token}`;
 
-  const res = await fetch(`${API_BASE}${path}`, {
+  const res = await fetch(apiUrl(path), {
     method: options.method ?? "GET",
     headers,
     body: options.body !== undefined ? JSON.stringify(options.body) : undefined,

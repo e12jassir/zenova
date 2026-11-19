@@ -134,10 +134,10 @@ export function Sidebar() {
   return (
     <nav
       aria-label="Navegación principal"
-      className="pointer-events-none fixed inset-y-0 left-3 z-50 hidden w-[60px] flex-col justify-between py-4 md:flex"
+      className="pointer-events-none fixed inset-y-0 left-0 z-50 hidden w-[360px] flex-col items-start gap-3 overflow-y-auto no-scrollbar py-4 pl-3 md:flex"
     >
       {/* Esquina superior izquierda: Perfil (solo imagen, sin mini panel) */}
-      <div ref={switcherRef} className="pointer-events-auto relative">
+      <div ref={switcherRef} className="pointer-events-auto relative shrink-0">
         <button
           type="button"
           onClick={() => setSwitcher((s) => !s)}
@@ -217,7 +217,7 @@ export function Sidebar() {
       </div>
 
       {/* Isla central: Navegación (centrada verticalmente) */}
-      <div className="glass pointer-events-auto absolute top-1/2 left-0 flex -translate-y-1/2 flex-col items-center gap-1 rounded-[24px] p-1.5">
+      <div className="glass pointer-events-auto my-auto flex shrink-0 flex-col items-center gap-1 rounded-[24px] p-1.5">
         {PRIMARY_NAV.map((item) => (
           <RailItem
             key={item.label}
@@ -229,7 +229,7 @@ export function Sidebar() {
       </div>
 
       {/* Isla inferior: Cuenta y Ajustes */}
-      <div className="glass pointer-events-auto flex flex-col items-center gap-1 rounded-[24px] p-1.5">
+      <div className="glass pointer-events-auto flex shrink-0 flex-col items-center gap-1 rounded-[24px] p-1.5">
         {SECONDARY_NAV.map((item) => (
           <RailItem key={item.label} item={item} active={isActive(item)} />
         ))}
@@ -241,27 +241,136 @@ export function Sidebar() {
 const MOBILE_TABS: NavItem[] = [
   PRIMARY_NAV[0],
   PRIMARY_NAV[1],
-  PRIMARY_NAV[3],
+  PRIMARY_NAV[2],
+  PRIMARY_NAV[4],
   PRIMARY_NAV[5],
-  SECONDARY_NAV[0],
 ];
 
 export function MobileNav() {
   const route = useRoute();
   const profile = useActiveProfile();
+  const [menuOpen, setMenuOpen] = useState(false);
+  const menuRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    setMenuOpen(false);
+  }, [route]);
+
+  useEffect(() => {
+    if (!menuOpen) return;
+    const onPointer = (e: Event) => {
+      if (e.target instanceof Node && !menuRef.current?.contains(e.target)) {
+        setMenuOpen(false);
+      }
+    };
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape") setMenuOpen(false);
+    };
+    window.addEventListener("pointerdown", onPointer);
+    window.addEventListener("mousedown", onPointer);
+    window.addEventListener("keydown", onKey);
+    return () => {
+      window.removeEventListener("pointerdown", onPointer);
+      window.removeEventListener("mousedown", onPointer);
+      window.removeEventListener("keydown", onKey);
+    };
+  }, [menuOpen]);
 
   if (!profile) return null;
 
   return (
     <>
-      <button
-        type="button"
-        onClick={() => actions.signOut()}
-        aria-label={`Perfil: ${profile.name} (cambiar)`}
-        className="fixed top-4 right-4 z-40 flex size-12 items-center justify-center transition active:scale-95 md:hidden"
-      >
-        <Avatar index={profile.avatar} className="size-9 shrink-0 shadow-[0_8px_24px_rgba(0,0,0,0.55)]" />
-      </button>
+      <div ref={menuRef} className="fixed top-4 right-4 z-50 md:hidden">
+        <button
+          type="button"
+          onClick={() => setMenuOpen((o) => !o)}
+          aria-expanded={menuOpen}
+          aria-haspopup="menu"
+          aria-label={`Perfil: ${profile.name}`}
+          className="flex size-12 items-center justify-center transition active:scale-95"
+        >
+          <Avatar index={profile.avatar} className="size-9 shrink-0 shadow-[0_8px_24px_rgba(0,0,0,0.55)]" />
+        </button>
+
+        <AnimatePresence>
+          {menuOpen && (
+            <motion.div
+              role="menu"
+              aria-label={`Opciones de ${profile.name}`}
+              initial={{ opacity: 0, y: -8, scale: 0.96 }}
+              animate={{ opacity: 1, y: 0, scale: 1 }}
+              exit={{ opacity: 0, y: -8, scale: 0.96 }}
+              transition={{ duration: 0.25, ease: EASE_SPRING }}
+              className="glass absolute top-14 right-0 z-50 w-56 space-y-1 rounded-2xl p-2"
+            >
+              <div className="px-2.5 py-1.5 text-xs font-bold tracking-wider text-dim uppercase">
+                {profile.name}
+              </div>
+              <button
+                type="button"
+                role="menuitem"
+                onClick={() => {
+                  setMenuOpen(false);
+                  navigate({ name: "me" });
+                }}
+                className="flex w-full items-center gap-3 rounded-xl px-2.5 py-2 text-sm font-semibold text-muted transition hover:bg-white/[0.08] hover:text-fg"
+              >
+                <UserRound className="size-4" />
+                Mi cuenta
+              </button>
+              <button
+                type="button"
+                role="menuitem"
+                onClick={() => {
+                  setMenuOpen(false);
+                  navigate({ name: "new" });
+                }}
+                className="flex w-full items-center gap-3 rounded-xl px-2.5 py-2 text-sm font-semibold text-muted transition hover:bg-white/[0.08] hover:text-fg"
+              >
+                <Flame className="size-4" />
+                Novedades
+              </button>
+              <button
+                type="button"
+                role="menuitem"
+                onClick={() => {
+                  setMenuOpen(false);
+                  navigate({ name: "settings" });
+                }}
+                className="flex w-full items-center gap-3 rounded-xl px-2.5 py-2 text-sm font-semibold text-muted transition hover:bg-white/[0.08] hover:text-fg"
+              >
+                <Settings className="size-4" />
+                Ajustes
+              </button>
+              <div className="my-1 h-px bg-white/10" />
+              <button
+                type="button"
+                role="menuitem"
+                onClick={() => {
+                  setMenuOpen(false);
+                  ui.editProfile(profile.id);
+                }}
+                className="flex w-full items-center gap-3 rounded-xl px-2.5 py-2 text-sm font-semibold text-muted transition hover:bg-white/[0.08] hover:text-fg"
+              >
+                <Pencil className="size-4" />
+                Editar perfil
+              </button>
+              <button
+                type="button"
+                role="menuitem"
+                onClick={() => {
+                  setMenuOpen(false);
+                  actions.signOut();
+                }}
+                className="flex w-full items-center gap-3 rounded-xl px-2.5 py-2 text-sm font-semibold text-muted transition hover:bg-white/[0.08] hover:text-fg"
+              >
+                <Users className="size-4" />
+                Cambiar de perfil
+              </button>
+            </motion.div>
+          )}
+        </AnimatePresence>
+      </div>
 
       <nav className="glass fixed inset-x-3 bottom-3 z-40 flex justify-around rounded-2xl px-2 py-2 md:hidden">
         {MOBILE_TABS.map((item) => {
@@ -273,7 +382,7 @@ export function MobileNav() {
               href={routeHref(item.route)}
               aria-current={active ? "page" : undefined}
               className={cx(
-                "flex flex-col items-center gap-1 rounded-xl px-3 py-1.5 text-[10px] font-semibold transition",
+                "flex flex-col items-center gap-1 rounded-xl px-2 py-1.5 text-[10px] font-semibold transition",
                 active ? "text-accent" : "text-muted",
               )}
             >

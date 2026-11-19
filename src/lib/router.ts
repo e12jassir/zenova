@@ -2,13 +2,15 @@ import { useSyncExternalStore } from "react";
 import { isPlatformId } from "./platforms";
 import type { PlatformId } from "./types";
 
+export type MyListTab = "list" | "continue" | "liked" | "reminders" | "history";
+
 export type Route =
   | { name: "home" }
   | { name: "movies" }
   | { name: "series" }
   | { name: "new" }
   | { name: "search"; q?: string }
-  | { name: "list" }
+  | { name: "list"; tab?: MyListTab }
   | { name: "categories" }
   | { name: "genre"; genre: string }
   | { name: "brand"; platform: PlatformId }
@@ -16,6 +18,13 @@ export type Route =
   | { name: "settings" };
 
 export type RouteName = Route["name"];
+
+const isMyListTab = (value: string | null): value is MyListTab =>
+  value === "list" ||
+  value === "continue" ||
+  value === "liked" ||
+  value === "reminders" ||
+  value === "history";
 
 const parse = (hash: string): Route => {
   const [path, query = ""] = hash.replace(/^#\/?/, "").split("?");
@@ -25,11 +34,14 @@ const parse = (hash: string): Route => {
     case "movies":
     case "series":
     case "new":
-    case "list":
     case "categories":
     case "me":
     case "settings":
       return { name: head };
+    case "list": {
+      const tab = params.get("tab");
+      return isMyListTab(tab) ? { name: "list", tab } : { name: "list" };
+    }
     case "search":
       return { name: "search", q: params.get("q") ?? undefined };
     case "genre":
@@ -45,6 +57,8 @@ export const routeHref = (route: Route): string => {
   switch (route.name) {
     case "home":
       return "#/";
+    case "list":
+      return route.tab ? `#/list?tab=${route.tab}` : "#/list";
     case "search":
       return route.q ? `#/search?q=${encodeURIComponent(route.q)}` : "#/search";
     case "genre":

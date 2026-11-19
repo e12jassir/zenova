@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 
 /**
- * PelisStream v2 - Samsung Tizen (.wgt) Packager & Signer
+ * Zenova v3 - Samsung Tizen (.wgt) Packager & Signer
  * 
  * Generates an official, signed .wgt (W3C Widget) package for Samsung Smart TVs
  * with valid W3C XML Digital Signatures (author-signature.xml & signature1.xml)
@@ -33,6 +33,7 @@ const DEFAULT_OUT = path.join(PROJECT_ROOT, 'dist-packages');
 const DEFAULT_CONFIG = path.join(__dirname, 'tizen', 'config.xml');
 const CERTS_DIR = path.join(__dirname, 'tizen', 'certs');
 const PUBLIC_DIR = path.join(PROJECT_ROOT, 'public');
+const IGNORED_ARTIFACT = /\.(apk|wgt|ipk|zip|map)$/i;
 
 // Parse CLI flags
 function parseArgs() {
@@ -80,7 +81,7 @@ function parseArgs() {
 
 function printHelp() {
   console.log(`
-PelisStream v2 - Samsung Tizen Packager
+Zenova v3 - Samsung Tizen Packager
 Usage: node package-tizen.js [options]
 
 Options:
@@ -124,7 +125,7 @@ function ensureCertificates(config) {
     execSync(
       `openssl req -x509 -newkey rsa:2048 -nodes ` +
       `-keyout "${config.authorKey}" -out "${config.authorCert}" -days 3650 ` +
-      `-subj "/C=CO/ST=Bolivar/L=Cartagena/O=PelisStream/OU=Developer/CN=PelisStream Author"`,
+      `-subj "/C=CO/ST=Bolivar/L=Cartagena/O=Zenova/OU=Developer/CN=Zenova Author"`,
       { stdio: 'pipe' }
     );
   }
@@ -134,7 +135,7 @@ function ensureCertificates(config) {
     execSync(
       `openssl req -x509 -newkey rsa:2048 -nodes ` +
       `-keyout "${config.distributorKey}" -out "${config.distributorCert}" -days 3650 ` +
-      `-subj "/C=CO/ST=Bolivar/L=Cartagena/O=PelisStream/OU=Developer/CN=PelisStream Distributor"`,
+      `-subj "/C=CO/ST=Bolivar/L=Cartagena/O=Zenova/OU=Developer/CN=Zenova Distributor"`,
       { stdio: 'pipe' }
     );
   }
@@ -346,6 +347,10 @@ function collectFilesRecursively(dir, baseDir = dir) {
   const entries = fs.readdirSync(dir, { withFileTypes: true });
 
   for (const entry of entries) {
+    if (!entry.isDirectory() && IGNORED_ARTIFACT.test(entry.name)) {
+      continue;
+    }
+
     const fullPath = path.join(dir, entry.name);
     const relPath = path.relative(baseDir, fullPath).replace(/\\/g, '/');
 
@@ -366,7 +371,7 @@ function collectFilesRecursively(dir, baseDir = dir) {
 async function main() {
   const config = parseArgs();
 
-  console.log('\n📺 [Tizen] PelisStream v2 - Samsung Tizen WGT Packager & Signer');
+  console.log('\n📺 [Tizen] Zenova v3 - Samsung Tizen WGT Packager & Signer');
   console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
 
   // 1. Verify dist exists and has index.html
@@ -389,11 +394,13 @@ async function main() {
   }
 
   const configContent = fs.readFileSync(config.configXml, 'utf8');
+  const versionMatch = configContent.match(/<widget\b[^>]*\bversion=["']([^"']+)["']/);
+  const version = versionMatch?.[1] ?? '3.0.0';
 
   // Check required Samsung Smart TV configurations
   const requiredChecks = [
     { pattern: /id=["']http:\/\/pelisstream\.app\/PelisStream["']/, desc: 'Widget ID "http://pelisstream.app/PelisStream"' },
-    { pattern: /version=["']2\.0\.0["']/, desc: 'Version "2.0.0"' },
+    { pattern: /<widget\b[^>]*\bversion=["'][^"']+["']/, desc: 'Widget version attribute' },
     { pattern: /screen-orientation=["']landscape["']/, desc: 'Screen orientation "landscape"' },
     { pattern: /<access\s+origin=["']\*["']\s+subdomains=["']true["']\s*\/>/, desc: '<access origin="*" subdomains="true"/>' },
     { pattern: /<tizen:allow-navigation\s+href=["']\*["']\s*\/>/, desc: '<tizen:allow-navigation href="*"/>' },
@@ -416,17 +423,17 @@ async function main() {
   const distributorCert = fs.readFileSync(config.distributorCert, 'utf8');
   const distributorKey = fs.readFileSync(config.distributorKey, 'utf8');
 
-  const wgtFileName = 'PelisStream_2.0.0.wgt';
+  const wgtFileName = `Zenova_${version}.wgt`;
   const outWgtPath = path.join(config.out, wgtFileName);
 
   console.log(`📦 Widget ID:            http://pelisstream.app/PelisStream`);
-  console.log(`🏷️  Version:              2.0.0`);
+  console.log(`🏷️  Version:              ${version}`);
   console.log(`📺 Orientation:          landscape`);
   console.log(`📂 Source Dist:          ${config.dist}`);
   console.log(`📤 Output File:          ${outWgtPath}`);
 
   // 3. Stage files in temporary directory
-  const tmpBase = fs.mkdtempSync(path.join(os.tmpdir(), 'pelisstream-tizen-'));
+  const tmpBase = fs.mkdtempSync(path.join(os.tmpdir(), 'zenova-tizen-'));
   const stageDir = path.join(tmpBase, 'widget');
 
   try {
@@ -540,7 +547,7 @@ async function main() {
     console.log(`   sdb connect <your-tv-ip>:26101`);
     console.log(`   # 3. Install the application package:`);
     console.log(`   sdb install "${outWgtPath}"`);
-    console.log(`   # 4. Launch PelisStream on TV:`);
+    console.log(`   # 4. Launch Zenova on TV:`);
     console.log(`   tizen run -p PelisStream.PelisStream`);
 
   } finally {

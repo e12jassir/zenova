@@ -2,7 +2,7 @@
 <widget xmlns="http://www.w3.org/ns/widgets"
         xmlns:tizen="http://tizen.org/ns/widgets"
         id="http://pelisstream.app/PelisStream"
-        version="2.0.0"
+        version="3.0.0"
         viewmodes="fullscreen">
 
     <tizen:application id="PelisStream.PelisStream"
@@ -10,9 +10,9 @@
                        screen-orientation="landscape"
                        required_version="3.0"/>
 
-    <name>PelisStream</name>
-    <description>PelisStream v2 - Catalogo y Streaming Optimizado para Smart TV</description>
-    <author href="https://github.com/Alexjcs24/pelisstream">PelisStream</author>
+    <name>Zenova</name>
+    <description>Zenova - Cine y series optimizado para Samsung Tizen</description>
+    <author href="https://github.com/e12jassir/zenova">Zenova</author>
 
     <icon src="icon.png"/>
     <content src="index.html"/>

@@ -8,11 +8,12 @@ import {
   useMediaState,
   type MediaPlayerInstance,
   type MediaProviderAdapter,
+  type PlayerSrc,
 } from '@vidstack/react';
 import { defaultLayoutIcons, DefaultVideoLayout } from '@vidstack/react/player/layouts/default';
 import Hls from 'hls.js';
 import { ArrowLeft, Languages, SkipForward, Sparkles } from 'lucide-react';
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 
 export interface NativePlayerSubtitle {
   url: string;
@@ -22,8 +23,16 @@ export interface NativePlayerSubtitle {
 }
 
 export interface NativePlayerProps {
-  /** Enlace directo al stream HLS (.m3u8) */
+  /** Enlace directo al stream HLS (.m3u8) o MP4 */
   streamUrl: string;
+  /** Formato del stream resuelto */
+  kind?: 'hls' | 'mp4';
+  /** Etiqueta del proveedor para mostrar en la barra superior */
+  providerLabel?: string;
+  /** Tiempo inicial en segundos para reanudar reproducción */
+  initialTime?: number;
+  /** Callback para persistir progreso real de reproducción */
+  onProgress?: (currentTime: number, duration: number) => void;
   /** Pistas de subtítulos opcionales */
   subtitles?: NativePlayerSubtitle[];
   /** Título principal de la película o serie */
@@ -41,11 +50,15 @@ export interface NativePlayerProps {
 }
 
 /**
- * NativePlayer — Reproductor nativo de PelisStream de alto rendimiento
+ * NativePlayer — Reproductor nativo de Zenova de alto rendimiento
  * basado en Vidstack y HLS.js con soporte exhaustivo para Smart TV y desktop.
  */
 export function NativePlayer({
   streamUrl,
+  kind,
+  providerLabel,
+  initialTime,
+  onProgress,
   subtitles,
   title,
   backdrop,
@@ -56,9 +69,66 @@ export function NativePlayer({
 }: NativePlayerProps) {
   const playerRef = useRef<MediaPlayerInstance>(null);
   const containerRef = useRef<HTMLDivElement>(null);
+  const headerRef = useRef<HTMLDivElement>(null);
 
   const [userActive, setUserActive] = useState(true);
   const idleTimer = useRef<number | undefined>(undefined);
+
+  const appliedInitialSeekRef = useRef(false);
+  const onProgressRef = useRef(onProgress);
+  onProgressRef.current = onProgress;
+  const lastReportedTimeRef = useRef(0);
+  const lastReportedAtRef = useRef(0);
+  const lastKnownPosRef = useRef<{ time: number; duration: number }>({ time: 0, duration: 0 });
+
+  const mediaSrc = useMemo<PlayerSrc>(() => {
+    if (kind === 'mp4') return { src: streamUrl, type: 'video/mp4' };
+    if (kind === 'hls') return { src: streamUrl, type: 'application/x-mpegurl' };
+    return streamUrl;
+  }, [streamUrl, kind]);
+
+  useEffect(() => {
+    appliedInitialSeekRef.current = false;
+  }, [streamUrl, initialTime]);
+
+  const tryInitialSeek = useCallback(() => {
+    if (appliedInitialSeekRef.current) return;
+    const player = playerRef.current;
+    if (!player || !initialTime || initialTime <= 10) return;
+    const duration = player.duration;
+    if (Number.isFinite(duration) && duration > 0 && initialTime >= duration * 0.95) {
+      appliedInitialSeekRef.current = true;
+      return;
+    }
+    player.currentTime = initialTime;
+    appliedInitialSeekRef.current = true;
+  }, [initialTime]);
+
+  const reportProgress = useCallback((t: number, d: number, force = false) => {
+    if (!Number.isFinite(t) || !Number.isFinite(d) || d <= 0) return;
+    lastKnownPosRef.current = { time: t, duration: d };
+    const now = Date.now();
+    const timeDelta = Math.abs(t - lastReportedTimeRef.current);
+    const elapsed = now - lastReportedAtRef.current;
+    if (!force && elapsed < 20_000 && timeDelta < 15) return;
+    lastReportedTimeRef.current = t;
+    lastReportedAtRef.current = now;
+    onProgressRef.current?.(t, d);
+  }, []);
+
+  useLayoutEffect(() => {
+    lastReportedTimeRef.current = 0;
+    lastReportedAtRef.current = 0;
+    lastKnownPosRef.current = { time: 0, duration: 0 };
+    return () => {
+      const player = playerRef.current;
+      const t = player ? player.currentTime : lastKnownPosRef.current.time;
+      const d = player ? player.duration : lastKnownPosRef.current.duration;
+      if (Number.isFinite(t) && Number.isFinite(d) && d > 0 && t > 0) {
+        onProgressRef.current?.(t, d);
+      }
+    };
+  }, [streamUrl]);
 
   // Vidstack internal controls visibility signal
   const isPlayerControlsVisible = useMediaState('controlsVisible', playerRef);
@@ -143,6 +213,23 @@ export function NativePlayer({
         return;
       }
 
+      // Permitir navegación D-pad dentro de la barra superior (Volver / Servidores Web / Siguiente)
+      const activeEl = document.activeElement;
+      if (
+        activeEl &&
+        headerRef.current?.contains(activeEl) &&
+        (e.key === 'ArrowLeft' ||
+          e.key === 'ArrowRight' ||
+          e.key === 'ArrowUp' ||
+          e.key === 'ArrowDown' ||
+          kc === 37 ||
+          kc === 38 ||
+          kc === 39 ||
+          kc === 40)
+      ) {
+        return;
+      }
+
       const player = playerRef.current;
       if (!player) return;
 
@@ -215,17 +302,51 @@ export function NativePlayer({
     >
       <MediaPlayer
         ref={playerRef}
-        src={streamUrl}
+        src={mediaSrc}
         title={title}
         poster={backdrop}
         viewType="video"
         streamType="on-demand"
         logLevel="warn"
-        crossOrigin="anonymous"
+        /*
+         * Sin `crossOrigin="anonymous"` a propósito.
+         *
+         * Ese atributo obliga al navegador a exigir CORS en la respuesta del
+         * video. Nuestro HLS va por `/api/hls` (mismo origen, no lo necesita) y
+         * Archive sirve sus mp4 desde un CDN que NO manda
+         * `Access-Control-Allow-Origin`: con el atributo, el video nunca carga.
+         *
+         * Si algún día se reproducen subtítulos desde otro dominio, hay que
+         * pasarlos por el proxy antes de agregarlos aquí.
+         */
         playsInline
         autoPlay
         load="eager"
         onProviderChange={handleProviderChange}
+        onLoadedMetadata={tryInitialSeek}
+        onCanPlay={tryInitialSeek}
+        onTimeUpdate={(detail) => {
+          const player = playerRef.current;
+          const t = detail.currentTime;
+          const d = player?.duration ?? 0;
+          if (d > 0) {
+            lastKnownPosRef.current = { time: t, duration: d };
+          }
+          reportProgress(t, d, false);
+        }}
+        onPause={() => {
+          const player = playerRef.current;
+          if (!player) return;
+          reportProgress(player.currentTime, player.duration, true);
+        }}
+        onEnded={() => {
+          const player = playerRef.current;
+          if (!player) return;
+          const d = player.duration;
+          if (d > 0) {
+            reportProgress(d, d, true);
+          }
+        }}
         className="size-full aspect-auto bg-black"
       >
         <MediaProvider className="size-full">
@@ -245,8 +366,9 @@ export function NativePlayer({
         {/* Layout oficial de Vidstack para video con controles limpios */}
         <DefaultVideoLayout icons={defaultLayoutIcons} colorScheme="dark" />
 
-        {/* Top Bar Cinematográfico estilo PelisStream (vidrio esmerilado, desenfoque y minimalismo) */}
+        {/* Top Bar Cinematográfico estilo Zenova (vidrio esmerilado, desenfoque y minimalismo) */}
         <div
+          ref={headerRef}
           className={`absolute inset-x-0 top-0 z-30 flex items-center justify-between gap-4 bg-gradient-to-b from-black/95 via-black/60 to-transparent px-4 pt-4 pb-12 sm:px-8 sm:pt-6 transition-all duration-300 ease-out ${
             isVisible
               ? 'opacity-100 translate-y-0 pointer-events-auto'
@@ -259,7 +381,7 @@ export function NativePlayer({
               type="button"
               onClick={handleClose}
               aria-label="Volver"
-              className="flex size-11 sm:size-12 shrink-0 items-center justify-center rounded-full bg-white/10 backdrop-blur-xl border border-white/10 text-white shadow-xl transition-all duration-200 hover:scale-105 hover:bg-white/20 active:scale-95 refract cursor-pointer"
+              className="flex size-11 sm:size-12 shrink-0 items-center justify-center rounded-full bg-white/10 backdrop-blur-xl border border-white/10 text-white shadow-xl transition-all duration-200 hover:scale-105 hover:bg-white/20 active:scale-95 focus:outline-none focus:ring-2 focus:ring-accent refract cursor-pointer"
             >
               <ArrowLeft className="size-5 sm:size-6" />
             </button>
@@ -271,7 +393,7 @@ export function NativePlayer({
                 </h2>
                 <span className="inline-flex shrink-0 items-center gap-1.5 rounded-full bg-accent/20 px-2.5 py-0.5 text-[11px] font-bold text-accent ring-1 ring-accent/40 backdrop-blur-md">
                   <Sparkles className="size-3" />
-                  HLS Nativo
+                  {providerLabel ?? (kind === 'mp4' ? 'Directo · MP4' : 'Directo · HLS')}
                 </span>
               </div>
               {episodeText && (
@@ -290,7 +412,7 @@ export function NativePlayer({
                 onClick={onSwitchToIframe}
                 aria-label="Servidores web alternativos"
                 title="Cambiar a servidores web (iframe)"
-                className="inline-flex items-center gap-2 rounded-full bg-white/10 px-3.5 py-2 text-xs sm:text-sm font-semibold text-white/90 backdrop-blur-xl border border-white/10 shadow-xl transition-all duration-200 hover:scale-105 hover:bg-white/20 active:scale-95 refract cursor-pointer"
+                className="inline-flex items-center gap-2 rounded-full bg-white/10 px-3.5 py-2 text-xs sm:text-sm font-semibold text-white/90 backdrop-blur-xl border border-white/10 shadow-xl transition-all duration-200 hover:scale-105 hover:bg-white/20 active:scale-95 focus:outline-none focus:ring-2 focus:ring-accent refract cursor-pointer"
               >
                 <Languages className="size-4 text-accent" />
                 <span className="hidden sm:inline">Servidores Web</span>
@@ -302,7 +424,7 @@ export function NativePlayer({
                 type="button"
                 onClick={onNextEpisode}
                 aria-label="Siguiente episodio"
-                className="inline-flex items-center gap-2 rounded-full bg-white/10 px-4 py-2 text-xs sm:text-sm font-semibold text-white backdrop-blur-xl border border-white/10 shadow-xl transition-all duration-200 hover:scale-105 hover:bg-white/20 active:scale-95 refract cursor-pointer"
+                className="inline-flex items-center gap-2 rounded-full bg-white/10 px-4 py-2 text-xs sm:text-sm font-semibold text-white backdrop-blur-xl border border-white/10 shadow-xl transition-all duration-200 hover:scale-105 hover:bg-white/20 active:scale-95 focus:outline-none focus:ring-2 focus:ring-accent refract cursor-pointer"
               >
                 <span>Siguiente</span>
                 <SkipForward className="size-4" />

@@ -62,6 +62,9 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     if (err instanceof Error && err.message === "DATABASE_URL_MISSING") {
       return res.status(503).json({ error: "Base de datos no configurada en el servidor." });
     }
+    if (err instanceof Error && err.message === "AUTH_SECRET_MISSING") {
+      return res.status(503).json({ error: "Secreto de autenticación no configurado en el servidor." });
+    }
     console.error("[auth/register]", err);
     return res.status(500).json({ error: "Error interno al crear la cuenta." });
   }

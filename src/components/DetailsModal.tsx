@@ -479,7 +479,7 @@ function Episodes({
                 animate={{ opacity: 1, y: 0, scale: 1 }}
                 exit={{ opacity: 0, y: -6, scale: 0.97 }}
                 transition={{ duration: 0.18 }}
-                className="absolute right-0 z-20 mt-2 max-h-72 w-52 overflow-y-auto rounded-xl bg-white/[0.06] refract-hi p-1.5 shadow-2xl"
+                className="glass bg-raised/95 refract absolute right-0 z-20 mt-2 max-h-72 w-52 overflow-y-auto rounded-xl p-1.5 shadow-2xl"
               >
                 {seasons.map((s) => (
                   <button

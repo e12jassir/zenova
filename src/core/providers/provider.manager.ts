@@ -124,8 +124,8 @@ export class VideoProviderManager {
 export const createDefaultProviderManager = (): VideoProviderManager =>
   new VideoProviderManager([
     new PlayLatinProvider(),
-    new VidSrcToProvider(),
     new VidSrcMeProvider(),
+    new VidSrcToProvider(),
     new TwoEmbedProvider(),
     new AutoEmbedProvider(),
   ]);

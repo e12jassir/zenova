@@ -18,7 +18,7 @@ export type ThemeId = "ember" | "midnight" | "crimson" | "cobalt" | "aurora" | "
 export const THEMES: Record<ThemeId, { name: string; description: string; palette: Palette }> = {
   ember: {
     name: "Ámbar",
-    description: "La firma cálida de PelisStream.",
+    description: "La firma cálida de Zenova.",
     palette: {
       ink: "#090807",
       raised: "#15110f",

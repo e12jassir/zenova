@@ -1,12 +1,14 @@
 {
-  "name": "pelisstream",
+  "name": "zenova",
   "private": true,
   "version": "3.0.0",
-  "description": "PelisStream v3 — Plataforma de Streaming de Alta Fidelidad",
+  "description": "Zenova — Plataforma de Streaming de Alta Fidelidad",
   "type": "module",
   "scripts": {
     "dev": "vite",
-    "build": "tsc --noEmit -p . && vite build",
+    "dev:full": "node scripts/dev-server.mjs",
+    "build": "tsc --noEmit -p . && tsc --noEmit -p tsconfig.api.json && vite build",
+    "typecheck": "tsc --noEmit -p . && tsc --noEmit -p tsconfig.api.json",
     "preview": "vite preview",
     "package:webos": "node packaging/package-webos.js",
     "package:tizen": "node packaging/package-tizen.js",

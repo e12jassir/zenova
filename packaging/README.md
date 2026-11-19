@@ -1,146 +1,114 @@
-# 📺 PelisStream v2 - Smart TV Packaging Suite
-**Arquitectura y Herramientas Automatizadas de Empaquetado para LG webOS & Samsung Tizen**
+# Zenova v3 — Guía de Despliegue (0 VPS) y Empaquetado
 
-Esta suite proporciona scripts de empaquetado nativos, ligeros y de alto rendimiento para generar binarios oficiales de Smart TV sin requerir la instalación obligatoria de los pesados SDKs de fabricante (`ares-cli` o `Tizen Studio`).
+Guía técnica para desplegar Zenova v3 sin servidor VPS dedicado y generar paquetes nativos para **Android TV**, **LG webOS (`.ipk`)** y **Samsung Tizen (`.wgt`)**.
 
 ---
 
-## 📁 Estructura del Directorio `packaging/`
+## 1. Arquitectura 0 VPS (Capa Gratuita)
 
+Zenova separa la interfaz estática (`dist/`) de la capa serverless (`api/`) y la base de datos PostgreSQL.
+
+### Backend y Web (Vercel Free o Cloudflare Pages) + Neon Free
+
+1. Crea un proyecto PostgreSQL en **Neon Free** y obtén la cadena de conexión `DATABASE_URL`.
+2. Despliega el repositorio en **Vercel Free** (usa `vercel.json` y `api/*` automáticamente) o **Cloudflare Pages** conectando los endpoints de `api/`.
+3. Configura las siguientes variables de entorno en producción:
+
+| Variable | Propósito |
+| :--- | :--- |
+| `DATABASE_URL` | URI de conexión PostgreSQL de Neon (`postgres://...`). |
+| `AUTH_SECRET` | Secreto aleatorio para firmar sesiones y tokens de autenticación. |
+| `STREAM_SIGNING_SECRET` | Secreto HMAC para firmar URLs temporales del proxy (`/api/stream` y `/api/hls`). |
+
+> Las apps empaquetadas (Android TV, webOS, Tizen) se ejecutan desde origen local (`capacitor://` o `file:///`). Para que autentiquen y resuelvan streams contra tu despliegue serverless, compila definiendo `VITE_API_URL` con la URL pública de tu backend.
+
+---
+
+## 2. Streaming Personal 0 Anuncios sin VPS (Jellyfin + Tailscale)
+
+Puedes servir tu propia biblioteca multimedia sin anuncios, sin abrir puertos en el router y sin contratar un VPS:
+
+1. Instala **Jellyfin** en tu equipo doméstico o mini-PC.
+2. Instala **Tailscale** en el equipo con Jellyfin y en tus dispositivos cliente (Android TV, móvil, PC).
+3. Copia la URL privada (o Tailscale Serve HTTPS) asignada por Tailscale a tu instancia de Jellyfin.
+4. En Zenova, abre **Ajustes → Servidor Personal** y guarda la URL Tailscale de tu servidor.
+
+---
+
+## 3. Empaquetado por Plataforma
+
+Todos los scripts webOS y Tizen excluyen automáticamente artefactos pesados previos (`.apk`, `.wgt`, `.ipk`, `.zip`, `.map`) presentes en `dist/` mediante el filtro `IGNORED_ARTIFACT`.
+
+### Android TV / Android (Capacitor + ADB)
+
+1. Compila apuntando al backend desplegado y sincroniza el proyecto Android:
+   ```bash
+   VITE_API_URL=https://tu-despliegue.vercel.app npm run build && npx cap sync android
+   ```
+2. Genera el APK desde `android/` (o desde Android Studio):
+   ```bash
+   cd android && ./gradlew assembleDebug
+   ```
+3. Activa la depuración ADB en el televisor e instala el APK:
+   ```bash
+   adb connect <IP_DEL_TV>:5555
+   adb install -r android/app/build/outputs/apk/debug/app-debug.apk
+   ```
+
+### LG webOS (`.ipk`)
+
+- **Manifiesto**: `packaging/webos/appinfo.json` (`id`: `com.pelisstream.app`, `version`: `3.0.0`, `bgColor`: `#090807`, `iconColor`: `#f0a640`, `disableBackHistoryAPI`: `true`).
+- **Compilación y empaquetado** (no requiere `ares-cli` para generar el `.ipk`):
+  ```bash
+  VITE_API_URL=https://tu-despliegue.vercel.app npm run build
+  npm run package:webos
+  # Salida: dist-packages/com.pelisstream.app_3.0.0_all.ipk
+  ```
+- **Instalación en el TV**:
+  ```bash
+  ares-install dist-packages/com.pelisstream.app_3.0.0_all.ipk -d <tv-device>
+  ares-launch com.pelisstream.app -d <tv-device>
+  ```
+  *(También puedes arrastrar el `.ipk` desde webOS Dev Manager o Homebrew Channel.)*
+
+### Samsung Tizen (`.wgt`)
+
+- **Manifiesto**: `packaging/tizen/config.xml` (`id`: `http://pelisstream.app/PelisStream`, `tizen:application id`: `PelisStream.PelisStream`, `version`: `3.0.0`).
+- **Firmado automático**: `packaging/package-tizen.js` genera y verifica `author-signature.xml` y `signature1.xml` (W3C XMLDSig) usando los certificados persistentes en `packaging/tizen/certs/`.
+- **Compilación y empaquetado** (no requiere Tizen Studio para generar el `.wgt`):
+  ```bash
+  VITE_API_URL=https://tu-despliegue.vercel.app npm run build
+  npm run package:tizen
+  # Salida: dist-packages/Zenova_3.0.0.wgt
+  ```
+- **Instalación en el TV**:
+  1. En el televisor: abre **Apps**, marca `12345` con el control remoto, activa **Developer Mode**, ingresa la IP de tu PC y reinicia el TV.
+  2. Conecta por SDB e instala el paquete:
+     ```bash
+     sdb connect <IP_DEL_TV>:26101
+     sdb install dist-packages/Zenova_3.0.0.wgt
+     tizen run -p PelisStream.PelisStream
+     ```
+
+### Empaquetado Unificado (webOS + Tizen)
+
+```bash
+npm run build && npm run package
 ```
+
+---
+
+## Estructura de `packaging/`
+
+```text
 packaging/
 ├── webos/
-│   └── appinfo.json              # Manifiesto oficial webOS TV (com.pelisstream.app v2.0.0)
+│   └── appinfo.json       # Manifiesto webOS (com.pelisstream.app v3.0.0)
 ├── tizen/
-│   ├── config.xml                # Manifiesto oficial Tizen TV (http://pelisstream.app/PelisStream v2.0.0)
-│   └── certs/                    # Almacén de certificados de firma digital (author & distributor)
-├── package-webos.js              # Empaquetador nativo .ipk (Debian ar/tar.gz)
-├── package-tizen.js              # Empaquetador y firmador XMLDSig .wgt (W3C Widgets)
-├── package-all.js                # Orquestador unificado de empaquetado
-└── README.md                     # Guía técnica de arquitectura y despliegue
-```
-
----
-
-## 1. 🟢 LG webOS (.ipk)
-
-### Manifiesto: `packaging/webos/appinfo.json`
-Cumple con las especificaciones del webOS Web App Runtime:
-- **`id`**: `"com.pelisstream.app"`
-- **`version`**: `"2.0.0"`
-- **`type`**: `"web"`
-- **`main`**: `"index.html"`
-- **`resolution`**: `"1920x1080"` (Full HD TV standard)
-- **`disableBackHistoryAPI`**: `true` ⚠️ *(VITAL: Evita que webOS intercepte la tecla Back del control remoto como navegación del historial del navegador, permitiendo al motor de navegación espacial de PelisStream gestionar el cierre de modales y diálogos de salida).*
-- **`vendor`**: `"PelisStream"`
-- **`icon`** / **`largeIcon`** / **`splashBackground`**: `icon.png` (80x80), `largeIcon.png` (130x130), `splash.png` (1920x1080).
-
-### Arquitectura del Script: `package-webos.js`
-El formato `.ipk` de webOS es un contenedor de paquetes Debian (`ar` archive) estructurado con:
-1. `debian-binary`: Encabezado de versión `2.0\n`.
-2. `control.tar.gz`: Metadatos leídos por `opkg` y `appinstalld` en webOS:
-   - `Package`: `com.pelisstream.app`
-   - `Version`: `2.0.0`
-   - `Installed-Size`: Calculado automáticamente en KiB.
-   - `webOS-Package-Format-Version`: `2`
-3. `data.tar.gz`: Carga útil del televisor:
-   - `usr/palm/applications/com.pelisstream.app/`: Contiene los archivos estáticos (`index.html`, `assets/`, `appinfo.json`, `icon.png`, etc.).
-   - `usr/palm/packages/com.pelisstream.app/packageinfo.json`: Registro del paquete.
-
-> **Prevención de Errores de Firmware**: El script normaliza los timestamps a la fecha de compilación para evitar el error común de firmware webOS donde timestamps en epoch 0 (`1969-12-31`) hacen fallar al `pkgverifier`.
-
-### Ejecución:
-```bash
-node packaging/package-webos.js
-# Salida: dist-packages/com.pelisstream.app_2.0.0_all.ipk
-```
-
-### Opciones CLI:
-- `--dist <ruta>`: Directorio con los archivos compilados (default: `../dist`).
-- `--out <ruta>`: Directorio de salida (default: `../dist-packages`).
-- `--dry-run`: Valida y arma el árbol sin escribir el archivo final `.ipk`.
-- `-v, --verbose`: Muestra el registro detallado.
-
-### Instalación en Televisor LG webOS:
-```bash
-# Vía webOS CLI (si está instalado):
-ares-install dist-packages/com.pelisstream.app_2.0.0_all.ipk -d <tv-device-name>
-ares-launch com.pelisstream.app -d <tv-device-name>
-
-# Vía webOS Dev Manager (interfaz gráfica):
-# Arrastrar y soltar el archivo .ipk generado directamente en la interfaz.
-```
-
----
-
-## 2. 🔵 Samsung Tizen (.wgt)
-
-### Manifiesto: `packaging/tizen/config.xml`
-Cumple con la especificación W3C Widget Packaging y las extensiones Samsung Smart TV:
-- **`id`**: `"http://pelisstream.app/PelisStream"`
-- **`tizen:application id`**: `"PelisStream.PelisStream"`
-- **`version`**: `"2.0.0"`
-- **`screen-orientation`**: `"landscape"` (Forzado para televisores)
-- **`<access origin="*" subdomains="true"/>`**: Permite peticiones de red hacia proveedores y metadatos externos (Cinemeta API).
-- **`<tizen:allow-navigation href="*"/>`**: Habilita la reproducción de streams e iframes de proveedores externos.
-- **Privilegios**:
-  - `http://tizen.org/privilege/internet`: Acceso completo a red/sockets.
-  - `http://tizen.org/privilege/tv.inputdevice`: **Imprescindible** para capturar teclas multimedia y flechas del control remoto Samsung Smart Control.
-  - `http://tizen.org/privilege/application.launch`: Lanzamiento de la aplicación.
-
-### Arquitectura del Script: `package-tizen.js`
-En Tizen TV Web Runtime, un archivo `.wgt` es un archivo ZIP que **exige firmas digitales criptográficas XMLDSig**:
-1. `author-signature.xml`:
-   - Firma todos los recursos de la aplicación (`config.xml`, `index.html`, `assets/`, etc.).
-   - Rol: `http://www.w3.org/ns/widgets-digsig#role-author`.
-   - Firmado con la clave privada de Autor (`author.key`).
-2. `signature1.xml`:
-   - Firma todos los recursos de la aplicación **más** `author-signature.xml`.
-   - Rol: `http://www.w3.org/ns/widgets-digsig#role-distributor`.
-   - Firmado con la clave privada del Distribuidor (`distributor.key`).
-
-> **Persistencia Criptográfica**: Las credenciales se conservan en `packaging/tizen/certs/`. Si no existen, se generan automáticamente con OpenSSL (RSA 2048-bit, vigencia 10 años). Mantener la misma clave de autor es obligatorio para que el televisor Samsung admita actualizaciones futuras sin error `118, -12`.
-
-### Ejecución:
-```bash
-node packaging/package-tizen.js
-# Salida: dist-packages/PelisStream_2.0.0.wgt
-```
-
-### Opciones CLI:
-- `--dist <ruta>`: Directorio con los archivos compilados (default: `../dist`).
-- `--out <ruta>`: Directorio de salida (default: `../dist-packages`).
-- `--author-cert <ruta>`: Certificado X.509 de autor personalizado.
-- `--distributor-cert <ruta>`: Certificado X.509 de distribuidor personalizado.
-- `--dry-run`: Valida firmas y hashes sin generar el `.wgt`.
-- `-v, --verbose`: Muestra el registro detallado.
-
-### Instalación en Televisor Samsung Tizen:
-```bash
-# 1. En el televisor: Abrir Apps -> teclear "12345" con el control -> Activar Developer Mode -> Ingresar la IP de tu PC -> Reiniciar TV
-# 2. Conectar mediante SDB (Smart Development Bridge):
-sdb connect <IP_DEL_TELEVISOR>:26101
-
-# 3. Instalar el paquete firmado:
-sdb install dist-packages/PelisStream_2.0.0.wgt
-
-# 4. Iniciar la aplicación:
-tizen run -p PelisStream.PelisStream
-```
-
----
-
-## 3. 🚀 Empaquetado Unificado
-
-Para generar ambos binarios de Smart TV en un solo paso:
-```bash
-node packaging/package-all.js
-```
-O agregando a `package.json`:
-```json
-"scripts": {
-  "package:webos": "node packaging/package-webos.js",
-  "package:tizen": "node packaging/package-tizen.js",
-  "package": "node packaging/package-all.js"
-}
+│   ├── config.xml         # Manifiesto Tizen (http://pelisstream.app/PelisStream v3.0.0)
+│   └── certs/             # Certificados RSA persistentes (author & distributor)
+├── package-webos.js       # Generador nativo .ipk (ar + tar.gz)
+├── package-tizen.js       # Generador y firmador XMLDSig .wgt
+├── package-all.js         # Ejecuta webOS + Tizen en secuencia
+└── README.md              # Esta guía
 ```

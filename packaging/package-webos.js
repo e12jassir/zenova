@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 
 /**
- * PelisStream v2 - LG webOS (.ipk) Packager
+ * Zenova v3 - LG webOS (.ipk) Packager
  * 
  * Generates an official, installable .ipk Debian package for LG Smart TV webOS
  * without requiring the heavy webOS CLI / ares-cli SDK.
@@ -28,6 +28,7 @@ const DEFAULT_DIST = path.join(PROJECT_ROOT, 'dist');
 const DEFAULT_OUT = path.join(PROJECT_ROOT, 'dist-packages');
 const DEFAULT_APPINFO = path.join(__dirname, 'webos', 'appinfo.json');
 const PUBLIC_DIR = path.join(PROJECT_ROOT, 'public');
+const IGNORED_ARTIFACT = /\.(apk|wgt|ipk|zip|map)$/i;
 
 // Parse CLI flags
 function parseArgs() {
@@ -63,7 +64,7 @@ function parseArgs() {
 
 function printHelp() {
   console.log(`
-PelisStream v2 - LG webOS Packager
+Zenova v3 - LG webOS Packager
 Usage: node package-webos.js [options]
 
 Options:
@@ -102,11 +103,14 @@ function getDirSize(dirPath) {
   return size;
 }
 
-// Copy directory recursively
+// Copy directory recursively (excluding heavy build artifacts)
 function copyDirSync(src, dest) {
   fs.mkdirSync(dest, { recursive: true });
   const entries = fs.readdirSync(src, { withFileTypes: true });
   for (const entry of entries) {
+    if (!entry.isDirectory() && IGNORED_ARTIFACT.test(entry.name)) {
+      continue;
+    }
     const srcPath = path.join(src, entry.name);
     const destPath = path.join(dest, entry.name);
     if (entry.isDirectory()) {
@@ -150,7 +154,7 @@ function buildArArchive(entries) {
 async function main() {
   const config = parseArgs();
 
-  console.log('\n📺 [webOS] PelisStream v2 - LG webOS IPK Packager');
+  console.log('\n📺 [webOS] Zenova v3 - LG webOS IPK Packager');
   console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
 
   // 1. Verify dist exists and has index.html
@@ -206,7 +210,7 @@ async function main() {
   console.log(`📤 Output File:          ${outIpkPath}`);
 
   // 3. Create temp staging environment
-  const tmpBase = fs.mkdtempSync(path.join(os.tmpdir(), 'pelisstream-webos-'));
+  const tmpBase = fs.mkdtempSync(path.join(os.tmpdir(), 'zenova-webos-'));
   const stageData = path.join(tmpBase, 'data');
   const stageCtrl = path.join(tmpBase, 'ctrl');
   const appInstallDir = path.join(stageData, 'usr', 'palm', 'applications', appId);
@@ -247,8 +251,8 @@ async function main() {
       id: appId,
       version: version,
       app: appId,
-      vendor: appinfo.vendor || 'PelisStream',
-      loc_name: appinfo.title || 'PelisStream',
+      vendor: appinfo.vendor || 'Zenova',
+      loc_name: appinfo.title || 'Zenova',
       package_format_version: 2
     };
     fs.writeFileSync(
@@ -270,8 +274,8 @@ async function main() {
       'Priority: optional',
       'Architecture: all',
       `Installed-Size: ${installedSizeKB}`,
-      'Maintainer: PelisStream Team <support@pelisstream.app>',
-      `Description: ${appinfo.appDescription || 'PelisStream v2 Smart TV Application'}`,
+      'Maintainer: Zenova Team <support@zenova.app>',
+      `Description: ${appinfo.appDescription || 'Zenova v3 Smart TV Application'}`,
       'webOS-Package-Format-Version: 2'
     ];
     fs.writeFileSync(

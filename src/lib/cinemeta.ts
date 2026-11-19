@@ -1,3 +1,4 @@
+import { apiUrl } from "./api";
 import type { Episode, MediaItem, MediaType, MetaDetails } from "./types";
 
 const BASE_URL = "https://v3-cinemeta.strem.io";
@@ -239,11 +240,9 @@ interface FuzzySearchHit {
   posterFallback?: string;
 }
 
-const API_BASE = ((import.meta.env.VITE_API_URL as string | undefined) ?? "").replace(/\/+$/, "");
-
 async function searchImdbFallback(query: string): Promise<MediaItem[]> {
   try {
-    const res = await fetch(`${API_BASE}/api/search?q=${encodeURIComponent(query)}`);
+    const res = await fetch(apiUrl(`/api/search?q=${encodeURIComponent(query)}`));
     if (!res.ok) return [];
     const data = (await res.json()) as { items?: FuzzySearchHit[] };
     return (data.items ?? []).map((h) => ({

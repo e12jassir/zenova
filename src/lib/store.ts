@@ -79,7 +79,6 @@ export function normalizeCloudState(raw: unknown): CloudState {
     const preferredProvider =
       !currentPreferred ||
       currentPreferred === "vidsrc_pm" ||
-      currentPreferred === "autoembed" ||
       currentPreferred === "multiembed"
         ? "playlatin"
         : currentPreferred;

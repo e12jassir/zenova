@@ -75,7 +75,14 @@ export function verifyPassword(password: string, stored: string): boolean {
 }
 
 function getSecret(): Buffer {
-  const raw = process.env.AUTH_SECRET || process.env.DATABASE_URL || "pelisstream-dev-secret";
+  const raw = process.env.AUTH_SECRET;
+  const isProd = process.env.VERCEL === "1" || process.env.NODE_ENV === "production";
+  if (!raw || raw.length < 16) {
+    if (isProd) {
+      throw new Error("AUTH_SECRET_MISSING");
+    }
+    return createHash("sha256").update("pelisstream-dev-secret").digest();
+  }
   return createHash("sha256").update(raw).digest();
 }
 

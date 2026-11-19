@@ -9,10 +9,13 @@ ReactDOM.createRoot(document.getElementById("root")!).render(
   </React.StrictMode>,
 );
 
-if ("serviceWorker" in navigator && import.meta.env.PROD) {
+const isWebOrigin =
+  window.location.protocol === "https:" ||
+  (window.location.protocol === "http:" && window.location.hostname === "localhost");
+if ("serviceWorker" in navigator && import.meta.env.PROD && isWebOrigin) {
   window.addEventListener("load", () => {
-    navigator.serviceWorker.register("/sw.js").catch(() => {
-      // SW registration failed or ignored in local dev
+    navigator.serviceWorker.register("./sw.js").catch(() => {
+      // SW registration ignored
     });
   });
 }

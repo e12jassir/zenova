@@ -241,13 +241,13 @@ export function Me() {
             icon={<ListVideo className="size-6" />}
             title="Historial"
             value={`${stats.watched} vistos`}
-            onClick={() => navigate({ name: "list" })}
+            onClick={() => navigate({ name: "list", tab: "history" })}
           />
           <Shortcut
             icon={<Heart className="size-6" />}
             title="Recordatorios"
             value={`${reminders.length} activos`}
-            onClick={() => navigate({ name: "new" })}
+            onClick={() => navigate({ name: "list", tab: "reminders" })}
           />
           <Shortcut
             icon={<Pencil className="size-6" />}

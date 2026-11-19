@@ -1,9 +1,9 @@
 import { motion } from "motion/react";
 import { Bell, Bookmark, Clock, Heart, Play, X } from "lucide-react";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { cx } from "../lib/format";
 import { useKidsFilter } from "../lib/hooks";
-import { navigate } from "../lib/router";
+import { navigate, type MyListTab } from "../lib/router";
 import { actions, useProfileData } from "../lib/store";
 import { ui } from "../lib/ui";
 import type { MediaItem } from "../lib/types";
@@ -13,15 +13,19 @@ import { EmptyState, MediaGrid, PageHeader, Segmented } from "../components/Page
 import { GUTTER } from "../components/Rail";
 import { SmartImage } from "../components/SmartImage";
 
-type Tab = "list" | "continue" | "liked" | "reminders" | "history";
+type Tab = MyListTab;
 type Sort = "recent" | "az" | "rating";
 
-export function MyList() {
+export function MyList({ initialTab }: { initialTab?: Tab }) {
   const data = useProfileData();
   const filter = useKidsFilter();
-  const [tab, setTab] = useState<Tab>("list");
+  const [tab, setTab] = useState<Tab>(initialTab ?? "list");
   const [sort, setSort] = useState<Sort>("recent");
   const [type, setType] = useState<"all" | "movie" | "series">("all");
+
+  useEffect(() => {
+    if (initialTab) setTab(initialTab);
+  }, [initialTab]);
 
   const resolve = (ids: string[]) =>
     filter(ids.map((id) => data.meta[id]).filter((x): x is MediaItem => Boolean(x)));
@@ -146,9 +150,15 @@ export function MyList() {
                 aria-label="Ordenar"
                 className="ml-auto rounded-full bg-white/[0.06] refract px-4 py-1.5 text-sm font-semibold text-fg outline-none"
               >
-                <option value="recent">Agregados recientemente</option>
-                <option value="az">A–Z</option>
-                <option value="rating">Mejor valorados</option>
+                <option value="recent" className="bg-raised text-fg">
+                  Agregados recientemente
+                </option>
+                <option value="az" className="bg-raised text-fg">
+                  A–Z
+                </option>
+                <option value="rating" className="bg-raised text-fg">
+                  Mejor valorados
+                </option>
               </select>
             )}
             {tab === "history" && counts.history > 0 && (

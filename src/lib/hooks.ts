@@ -1,8 +1,7 @@
 import { useCallback, useEffect, useRef, useState, type RefObject } from "react";
 import { catalogKey, getCatalog, getMeta, isKidsSafe, type CatalogQuery } from "./cinemeta";
 import { useActiveProfile } from "./store";
-import type { Episode, MediaItem, MetaDetails } from "./types";
-import { getAnimeEpisodes } from "../core/extractors/anime.extractor";
+import type { MediaItem, MetaDetails } from "./types";
 
 export function useKidsFilter() {
   const profile = useActiveProfile();
@@ -122,37 +121,6 @@ export function useMeta(item: MediaItem | null) {
     if (!item) return;
     let alive = true;
     setState({ id: item.id, details: null, loading: true });
-
-    if (item.id.startsWith("anime-")) {
-      const animeSlug = item.id.replace(/^anime-/, "");
-      getAnimeEpisodes(animeSlug)
-        .then((eps) => {
-          if (!alive) return;
-          const mappedEpisodes: Episode[] = eps.map((ep) => ({
-            id: `${item.id}:${ep.id || ep.number}`,
-            season: 1,
-            episode: Number(ep.number) || 1,
-            title: ep.title || `Episodio ${ep.number}`,
-            released: "",
-            thumbnail: item.background || item.poster,
-            synopsis: ep.title ? `${ep.title} · Transmisión directa HLS` : `Episodio ${ep.number}`,
-          }));
-          setState({
-            id: item.id,
-            details: {
-              item,
-              episodes: mappedEpisodes,
-            },
-            loading: false,
-          });
-        })
-        .catch(() => {
-          if (alive) setState({ id: item.id, details: { item, episodes: [] }, loading: false });
-        });
-      return () => {
-        alive = false;
-      };
-    }
 
     getMeta(item.type, item.id)
       .catch(() => getMeta(item.type === "movie" ? "series" : "movie", item.id))
