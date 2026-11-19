@@ -280,10 +280,12 @@ export function StreamEngine({
 
   return (
     <div className="relative size-full overflow-hidden bg-black">
-      {/* Top hover sensor so moving cursor to top edge over cross-origin iframe always reveals chrome */}
+      {/* Top hover/touch sensor so moving cursor or tapping top edge over cross-origin iframe always reveals chrome */}
       <div
         onMouseEnter={showChrome}
         onMouseMove={showChrome}
+        onTouchStart={showChrome}
+        onClick={showChrome}
         className="fixed inset-x-0 top-0 z-30 h-14 bg-transparent"
       />
 
@@ -413,6 +415,39 @@ export function StreamEngine({
           </motion.div>
         )}
       </AnimatePresence>
+
+      {/* Persistent compact failover pill (visible when top chrome is hidden on touch/TV or when an embed loads blank) */}
+      {iframeLoaded && !slowWarning && !visibleChrome && (
+        <div className="fixed right-4 bottom-4 z-30 flex items-center gap-2 opacity-65 transition-opacity hover:opacity-100 focus-within:opacity-100 sm:right-6 sm:bottom-6">
+          <button
+            type="button"
+            onClick={() => {
+              showChrome();
+              handleRotate();
+            }}
+            title="Si no reproduce, cambia de servidor (Tecla S)"
+            className="glass inline-flex items-center gap-1.5 rounded-full px-3.5 py-2 text-xs font-bold text-fg shadow-xl refract"
+          >
+            <RefreshCw className="size-3.5 text-accent" />
+            <span>Cambiar servidor (S)</span>
+          </button>
+          {!effectiveCompatMode && (
+            <button
+              type="button"
+              onClick={() => {
+                showChrome();
+                onToggleCompatMode();
+                ui.toast("Modo compatible activado");
+              }}
+              title="Activar modo compatible si el video no arranca"
+              className="glass inline-flex items-center gap-1.5 rounded-full px-3 py-2 text-xs font-semibold text-muted hover:text-fg shadow-xl refract"
+            >
+              <ShieldCheck className="size-3.5" />
+              <span className="hidden sm:inline">Compat</span>
+            </button>
+          )}
+        </div>
+      )}
 
       {/* Top Chrome Bar (Title + Server Switcher + Episodes + Mode Switcher) */}
       <motion.div

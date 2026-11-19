@@ -22,7 +22,7 @@ export function PageHeader({
   children?: ReactNode;
 }) {
   return (
-    <header className={cx("pt-32 pb-8 md:pt-16", GUTTER)}>
+    <header className={cx("pt-24 pb-8 md:pt-24", GUTTER)}>
       {eyebrow && (
         <motion.div
           initial={{ opacity: 0, y: 10 }}

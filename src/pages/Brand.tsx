@@ -94,7 +94,7 @@ export function Brand({ platform }: { platform: PlatformId }) {
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.9, ease: EASE_GLIDE }}
           className={cx(
-            "absolute inset-x-0 top-24 flex items-start justify-between md:top-10",
+            "absolute inset-x-0 top-24 flex items-start justify-between md:top-20",
             GUTTER,
           )}
         >
