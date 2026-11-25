@@ -46,6 +46,8 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     const now = Date.now();
     const state = sanitizeState(body.state);
     const passwordHash = hashPassword(password);
+    // Sign before inserting so a missing AUTH_SECRET never leaves an orphan account in the DB.
+    const token = signToken(username);
 
     await sql`
       INSERT INTO pelisstream_accounts (username, password_hash, state, updated_at, created_at)
@@ -53,7 +55,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     `;
 
     return res.status(201).json({
-      token: signToken(username),
+      token,
       username,
       state,
       updatedAt: now,

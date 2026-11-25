@@ -15,10 +15,11 @@ import {
  */
 export class VidSrcMeProvider implements IVideoProviderStrategy {
   readonly id = 'vidsrc_me';
-  readonly name = 'Opción 2: Directo (HD · Subtitulado)';
+  readonly name = 'Opción 2: Directo (HD · Compat)';
   readonly shortName = 'Opción 2';
   readonly audioHint = 'Directo · Sub';
   readonly priority = 2;
+  readonly requiresCompatMode = true;
 
   canHandle(request: PlaybackRequest): boolean {
     return isValidPlaybackRequest(request);
@@ -38,16 +39,18 @@ export class VidSrcMeProvider implements IVideoProviderStrategy {
       embedUrl,
       sandboxFlags: SHARED_SANDBOX_FLAGS,
       allowAttributes: SHARED_ALLOW_ATTRIBUTES,
+      requiresCompatMode: true,
     };
   }
 }
 
 export class VidSrcToProvider implements IVideoProviderStrategy {
   readonly id = 'vidsrc_to';
-  readonly name = 'Opción 3: Espejo HD (Multi · Sub)';
+  readonly name = 'Opción 3: Espejo HD (Multi · Compat)';
   readonly shortName = 'Opción 3';
   readonly audioHint = 'HD Mirror';
   readonly priority = 3;
+  readonly requiresCompatMode = true;
 
   canHandle(request: PlaybackRequest): boolean {
     return isValidPlaybackRequest(request);
@@ -67,6 +70,7 @@ export class VidSrcToProvider implements IVideoProviderStrategy {
       embedUrl,
       sandboxFlags: SHARED_SANDBOX_FLAGS,
       allowAttributes: SHARED_ALLOW_ATTRIBUTES,
+      requiresCompatMode: true,
     };
   }
 }

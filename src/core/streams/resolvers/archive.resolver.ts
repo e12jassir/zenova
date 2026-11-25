@@ -31,6 +31,7 @@ const MIN_SIDE = 240;
 /** Un master de archivo de 20 GB no se puede streamear: mejor caer al iframe. */
 const MAX_FILE_BYTES = 6 * 1024 ** 3;
 const MAX_YEAR_DRIFT = 2;
+const MAX_PUBLIC_DOMAIN_YEAR = 1980;
 /** Tolerancia de duración: cubre cortes distintos sin aceptar otro contenido. */
 const RUNTIME_TOLERANCE = 0.12;
 
@@ -85,13 +86,22 @@ const normalize = (raw: string): string =>
     .replace(/[^a-z0-9]+/g, ' ')
     .trim();
 
-/** Coincidencia por tokens: "nosferatu" sí casa con "fw murnaus nosferatu". */
-const titleMatches = (a: string, b: string): boolean => {
-  if (!a || !b) return false;
-  if (a === b) return true;
-  const [short, long] = a.length <= b.length ? [a, b] : [b, a];
-  if (short.length < 4) return false;
-  return ` ${long} `.includes(` ${short} `);
+/** Coincidencia estricta por título: evita falsos positivos con "aka" o títulos largos distintos. */
+const titleMatches = (archiveTitle: string, requestedTitle: string): boolean => {
+  if (!archiveTitle || !requestedTitle) return false;
+  if (archiveTitle === requestedTitle) return true;
+  if (requestedTitle.length < 4) return false;
+
+  const stripped = archiveTitle.replace(/\s+(?:1[89]\d{2}|20\d{2})$/, '').trim();
+  if (stripped === requestedTitle) return true;
+  if (stripped.includes(' aka ') && !stripped.startsWith(`${requestedTitle} `)) return false;
+  if (stripped.startsWith(`${requestedTitle} `)) return true;
+
+  if (stripped.endsWith(` ${requestedTitle}`)) {
+    const prefix = stripped.slice(0, stripped.length - requestedTitle.length).trim();
+    return prefix.split(/\s+/).filter(Boolean).length <= 4;
+  }
+  return false;
 };
 
 const parseYear = (value: unknown): number | undefined => {
@@ -184,6 +194,8 @@ export class ArchiveStreamResolver implements IStreamResolver {
   canResolve(request: StreamRequest): boolean {
     // Archive cataloga películas, no episodios sueltos de una serie.
     if (request.type !== 'movie') return false;
+    // Solo películas con año conocido dentro del rango clásico/dominio público.
+    if (!request.year || request.year <= 1800 || request.year > MAX_PUBLIC_DOMAIN_YEAR) return false;
     return Boolean(request.title && normalize(request.title).length >= 3);
   }
 
@@ -291,8 +303,9 @@ export class ArchiveStreamResolver implements IStreamResolver {
       if (!titleMatches(normalize(title), requestedTitle)) return null;
 
       const collections = collectionList(meta.collection);
-      // Primero el año declarado; si no hay, el que esté en el título o el id.
-      const year = parseYear(meta.year ?? meta.date ?? doc.year) ?? yearHint(title, doc.identifier);
+      // Prioriza año declarado o en título/id antes que `date` (que suele ser fecha de subida).
+      const year =
+        parseYear(meta.year ?? doc.year) ?? yearHint(title, doc.identifier) ?? parseYear(meta.date);
 
       const file = pickBestFile(data.files ?? []);
       if (!file) return null;

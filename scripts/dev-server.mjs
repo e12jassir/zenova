@@ -11,6 +11,11 @@
  *                                          → activa el HLS de prueba
  */
 
+const { existsSync } = await import('node:fs');
+if (existsSync('.env.local') && typeof process.loadEnvFile === 'function') {
+  process.loadEnvFile('.env.local');
+}
+
 process.env.STREAM_DEMO_RESOLVER ??= '';
 process.env.STREAM_SIGNING_SECRET ??= 'local-dev-stream-secret-0123456789';
 

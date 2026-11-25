@@ -325,6 +325,9 @@ export function NativePlayer({
         onProviderChange={handleProviderChange}
         onLoadedMetadata={tryInitialSeek}
         onCanPlay={tryInitialSeek}
+        onError={() => {
+          onSwitchToIframe?.();
+        }}
         onTimeUpdate={(detail) => {
           const player = playerRef.current;
           const t = detail.currentTime;
