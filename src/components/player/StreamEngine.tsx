@@ -117,8 +117,13 @@ export function StreamEngine({
   const mountTimeRef = useRef<number>(Date.now());
   const watchdogTimer = useRef<number | undefined>(undefined);
   const savedIframeKeyRef = useRef<string>("");
+  const autoTriedCountRef = useRef(0);
   const [iframeLoaded, setIframeLoaded] = useState(false);
   const [slowWarning, setSlowWarning] = useState(false);
+
+  useEffect(() => {
+    autoTriedCountRef.current = 0;
+  }, [item.id, episode?.season, episode?.episode]);
 
   const handleRotate = () => {
     const elapsed = Date.now() - mountTimeRef.current;
@@ -309,6 +314,12 @@ export function StreamEngine({
           window.clearTimeout(watchdogTimer.current);
           watchdogTimer.current = undefined;
           defaultProviderManager.reportFailure(resolution.providerId);
+          const maxAutoTries = Math.max(0, defaultProviderManager.getAll().length - 1);
+          if (autoTriedCountRef.current < maxAutoTries) {
+            autoTriedCountRef.current += 1;
+            onRotateProvider();
+            return;
+          }
           setIframeLoaded(true);
           setSlowWarning(true);
         }}

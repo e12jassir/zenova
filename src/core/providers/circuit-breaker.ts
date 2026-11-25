@@ -50,7 +50,7 @@ export class ProviderCircuitBreaker {
   constructor(
     readonly providerId: string,
     private readonly config: CircuitBreakerConfig = {
-      failureThreshold: 2,
+      failureThreshold: 1,
       recoveryCooldownMs: 120_000,
     },
   ) {
